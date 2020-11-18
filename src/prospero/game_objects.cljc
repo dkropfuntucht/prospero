@@ -228,8 +228,8 @@
   (let [current (get-in object [:update-state])]
     (if (nil? current)
       (assoc object :update-state updater-fn)
-      (assoc object :update-state (fn [o c f r]
-                                    (updater-fn (current o c f) c f r))))))
+      (assoc object :update-state (fn [o c f r gm]
+                                    (updater-fn (current o c f r gm) c f r gm))))))
 
 (defn add-animator
   "Add an animation to the object, specified by

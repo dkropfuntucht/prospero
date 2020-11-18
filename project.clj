@@ -1,4 +1,4 @@
-(defproject prospero/prospero "0.1.0"
+(defproject prospero/prospero "0.1.1"
   :description "A multi-target pure Clojure(Script) game engine"
   :url "https://github.com/dkropfuntucht/prospero"
   :license {:name "EPL-2.0"

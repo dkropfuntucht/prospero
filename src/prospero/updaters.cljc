@@ -39,3 +39,14 @@
        (update-in [:translation 1] + step))))
   ([object target]
    (update-position-2d object target 1)))
+
+(defn wrap-update-active-global-modes
+  "Wrap the supplied `update-fn` with a function
+   that will only update if the system is in a global mode
+   that is in the supplied `active-global-modes` set.
+  This can be used to implement pause functionality. "
+  [update-fn active-global-modes]
+  (fn [o c f r gm]
+    (if (contains? active-global-modes gm)
+      (update-fn o c f r gm)
+      o)))

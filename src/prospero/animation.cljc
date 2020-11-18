@@ -95,10 +95,11 @@
    curve
    {:keys [animator-id
            initial-state
-           initial-value] :as extended-args
+           initial-value
+           active-global-modes] :as extended-args
     :or {animator-id   (gensym "animator")
          initial-state :running}}]
-  (fn [obj current-time frame-time]
+  (fn [obj current-time frame-time root-state global-mode]
     (let [state (get-in obj [:animators animator-id :state])]
       (if (and (not= initial-state :running) (nil? state))
         (assoc-in obj [:animators animator-id :state] initial-state)
@@ -126,12 +127,13 @@
            initial-value
            limit
            limit-signal
-           on-limit] :as extended-args
+           on-limit
+           active-global-modes] :as extended-args
     :or {animator-id   (gensym "animator")
          initial-state :running}}]
   (if (some? custom-fn)
     custom-fn
-    (fn [obj current-time frame-time]
+    (fn [obj current-time frame-time root-state global-mode]
       (let [state (get-in obj [:animators animator-id :state])]
         (if (and (not= initial-state :running) (nil? state))
           (assoc-in obj [:animators animator-id :state] initial-state)
@@ -164,7 +166,11 @@
                                 :or
                                 u-value)]
 
-            (if (or (= state :running) (nil? state))
+            (if (and (or (nil? active-global-modes)
+                         (and
+                          (some? active-global-modes)
+                          (contains? active-global-modes global-mode)))
+                     (or (= state :running) (nil? state)))
               (cond-> (assoc-in obj data-path (if (= domain :integers)
                                                 (int f-value)
                                                 f-value))

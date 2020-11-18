@@ -16,7 +16,7 @@
 ;;TODO: swap col-map with col-results, because col-results is what we need to use
 (declare update-state)
 (defn- update-state
-  [mutable-snapshot event-state objects colliders no-colliders col-results [apx apy apz] current-time frame-time root-state]
+  [mutable-snapshot event-state objects colliders no-colliders col-results [apx apy apz] current-time frame-time root-state global-mode]
   (let [col-map     (if (map? colliders)
                       colliders
                       (group-by #(:object-id (first %)) colliders))
@@ -59,7 +59,8 @@
                                                        (+ apz (get-in o [:translation 2]))]
                                                       current-time
                                                       frame-time
-                                                      root-state))
+                                                      root-state
+                                                      global-mode))
                                  o)))
 
 
@@ -81,7 +82,7 @@
 
                        (comp (fn [o]
                                (if (contains? o :process-event)
-                                 (proevent/process-event o event-state root-state)
+                                 (proevent/process-event o event-state root-state global-mode)
                                  o)))
 
                        (comp (fn [o]
@@ -90,7 +91,8 @@
                                   o
                                   current-time
                                   frame-time
-                                  (when (contains? o :watch-root-state) root-state))
+                                  (when (contains? o :watch-root-state) root-state)
+                                  global-mode)
                                  o))))]
     (mapv
      (fn [object]
@@ -101,8 +103,9 @@
 (defn start-game
   "This starts the game loop.  As a rule, use `prospero.core/start-game` rather than this
    fn directly."
-  [{:keys [::frame-delay]
-    :or {frame-delay 25}
+  [{:keys [::frame-delay ::global-mode-path]
+    :or {frame-delay      25
+         global-mode-path []}
     :as game-system}
    objects]
 
@@ -119,7 +122,8 @@
                                   [0 0 0]
                                   (procompat/get-time)
                                   frame-delay
-                                  objects)]
+                                  objects
+                                  (get-in objects global-mode-path))]
     (async/go
       (async/>! update-chan first-run)
       (async/>! time-chan (procompat/get-time)))
@@ -130,11 +134,12 @@
             current-time (procompat/get-time)
             key-state    (progame/sample-keyboard-state game-system {})
             mouse-state  (progame/sample-mouse-state game-system {})
+            global-mode  (get-in obj global-mode-path)
 
             ;;TODO: should collision detection happen after the render?
             to-collide   (procoll/collect-colliders #{} obj)
             colliders    (->> to-collide
-                              (procoll/collision-detection)
+                              (procoll/collision-detection global-mode)
                               (mapcat identity)
                               (remove nil?)
                               distinct)
@@ -164,7 +169,8 @@
                                             [0 0 0]
                                             current-time
                                             (max frame-time frame-delay)
-                                            obj))
+                                            obj
+                                            global-mode))
         (async/>! time-chan current-time)
 
         ;;TODO: wtf? wtf is this for?

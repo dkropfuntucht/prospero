@@ -22,6 +22,10 @@
 ::key-arrow-left
 ::key-arrow-up
 
+::key-backspace
+::key-delete
+::key-pause
+
 ::key-letter-a
 ::key-letter-b
 ::key-letter-c
@@ -48,6 +52,8 @@
 ::key-letter-x
 ::key-letter-y
 ::key-letter-z
+
+::key-space-bar
 
 
 (def signals (atom {}))
@@ -91,69 +97,73 @@
     sigs))
 
 (defn process-event
-  [object {:keys [keyboard-down keyboard-held keyboard-up mouse-state signal-state] :as event-state} root-state]
+  [object {:keys [keyboard-down keyboard-held keyboard-up mouse-state signal-state] :as event-state} root-state global-mode]
   (reduce-kv
-   (fn [obj [event-type event-code] event-fn]
-     (let [event-fn (if (vector? event-fn)
-                      (condp = (first event-fn)
-                        ::emit-signal-on-event
-                        (fn [o _] (send-signal! (second event-fn)) o)
+   (fn [obj [event-type event-code event-opts] event-fn]
+     (let [event-fn  (if (vector? event-fn)
+                       (condp = (first event-fn)
+                         ::emit-signal-on-event
+                         (fn [o _] (send-signal! (second event-fn)) o)
 
-                        ::change-animators-on-event
-                        (fn [o _]
-                          (reduce
-                           (fn [os [as-k as-v]]
-                             (assoc-in os [:animators as-k :state] as-v))
-                           o
-                           (second event-fn))))
-                      event-fn)]
+                         ::change-animators-on-event
+                         (fn [o _]
+                           (reduce
+                            (fn [os [as-k as-v]]
+                              (assoc-in os [:animators as-k :state] as-v))
+                            o
+                            (second event-fn))))
+                       event-fn)
+           active?   (:active-global-modes event-opts (constantly true))]
 
-       (cond (and (= event-type ::keyboard-down)
-                  (contains? keyboard-down event-code))
-             (event-fn obj [event-type event-code {:keyboard-down keyboard-down
-                                                   :root-state    root-state
-                                                   :event-state   event-state}])
 
-             (and (= event-type ::keyboard-held)
-                  (contains? keyboard-held event-code))
-             (event-fn obj [event-type event-code {:keyboard-held keyboard-held
-                                                   :root-state    root-state
-                                                   :event-state   event-state}])
+       (if (active? global-mode)
+         (cond (and (= event-type ::keyboard-down)
+                    (contains? keyboard-down event-code))
+               (event-fn obj [event-type event-code {:keyboard-down keyboard-down
+                                                     :root-state    root-state
+                                                     :event-state   event-state}])
 
-             (and (= event-type ::keyboard-up)
-                  (contains? keyboard-up event-code))
-             (event-fn obj [event-type event-code {:keyboard-up keyboard-up
-                                                   :root-state  root-state
-                                                   :event-state event-state}])
+               (and (= event-type ::keyboard-held)
+                    (contains? keyboard-held event-code))
+               (event-fn obj [event-type event-code {:keyboard-held keyboard-held
+                                                     :root-state    root-state
+                                                     :event-state   event-state}])
 
-             (and (= event-type ::mouse-down)
-                  (= (:change mouse-state) ::mouse-down)
-                  (contains? (:event-buttons mouse-state) event-code ))
-             (event-fn obj [event-type event-code {:mouse-down   (:event-buttons mouse-state)
-                                                   :mouse-coords (:mouse-coords mouse-state)
-                                                   :root-state   root-state
-                                                   :event-state  event-state}])
+               (and (= event-type ::keyboard-up)
+                    (contains? keyboard-up event-code))
+               (event-fn obj [event-type event-code {:keyboard-up keyboard-up
+                                                     :root-state  root-state
+                                                     :event-state event-state}])
 
-             (and (= event-type ::mouse-up)
-                  (= (:change mouse-state) ::mouse-up)
-                  (contains? (:event-buttons mouse-state) event-code))
-             (event-fn obj [event-type event-code {:mouse-up     (:event-buttons mouse-state)
-                                                   :mouse-coords (:mouse-coords mouse-state)
-                                                   :root-state   root-state
-                                                   :event-state  event-state}])
+               (and (= event-type ::mouse-down)
+                    (= (:change mouse-state) ::mouse-down)
+                    (contains? (:event-buttons mouse-state) event-code ))
+               (event-fn obj [event-type event-code {:mouse-down   (:event-buttons mouse-state)
+                                                     :mouse-coords (:mouse-coords mouse-state)
+                                                     :root-state   root-state
+                                                     :event-state  event-state}])
 
-             (and (= event-type ::signal)
-                  (contains? signal-state event-code))
-             (reduce
-              (fn [o sa]
-                (event-fn o [event-type event-code {:signal-state signal-state
-                                                    :root-state   root-state
-                                                    :signal-args  sa
-                                                    :event-state  event-state}]))
-              obj
-              (signal-state event-code))
+               (and (= event-type ::mouse-up)
+                    (= (:change mouse-state) ::mouse-up)
+                    (contains? (:event-buttons mouse-state) event-code))
+               (event-fn obj [event-type event-code {:mouse-up     (:event-buttons mouse-state)
+                                                     :mouse-coords (:mouse-coords mouse-state)
+                                                     :root-state   root-state
+                                                     :event-state  event-state}])
 
-             :or
-             obj)))
+               (and (= event-type ::signal)
+                    (contains? signal-state event-code))
+               (reduce
+                (fn [o sa]
+                  (event-fn o [event-type event-code {:signal-state signal-state
+                                                      :root-state   root-state
+                                                      :signal-args  sa
+                                                      :event-state  event-state}]))
+                obj
+                (signal-state event-code))
+
+               :or
+               obj)
+         obj)))
    object
    (:process-event object)))

@@ -49,19 +49,25 @@
       false)))
 
 (defn collision-detection
-  [colliders]
+  [global-mode colliders]
   (map
    (fn [c]
-     (let [{:keys [bounds-box level-set match-set on-hit-fn]} (:collisions c)
-           to-test (filter
-                    (fn [dc]
-                      (some #(contains? match-set %) (get-in dc [:collisions :level-set])))
-                    colliders)
-           col-res (map
-                    (fn [oc]
-                      (if (collision-intersects? c oc)
-                        [c oc]
-                        nil))
-                    to-test)]
+     (let [{:keys [active-global-modes
+                   bounds-box
+                   level-set
+                   match-set
+                   on-hit-fn]} (:collisions c)
+           mode-match (or (nil? active-global-modes)
+                          (contains? active-global-modes global-mode))
+           to-test    (filter
+                       (fn [dc]
+                         (some #(contains? match-set %) (get-in dc [:collisions :level-set])))
+                       colliders)
+           col-res    (map
+                       (fn [oc]
+                         (if (and mode-match (collision-intersects? c oc))
+                           [c oc]
+                           nil))
+                       to-test)]
        col-res))
    colliders))

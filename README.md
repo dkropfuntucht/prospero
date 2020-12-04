@@ -30,6 +30,10 @@ that direction.
 
 ## Getting Started with Prospero
 
+A brief introduction to get you started follows, but you can also check
+out a tutorial game here:
+[https://github.com/dkropfuntucht/the-bugs](https://github.com/dkropfuntucht/the-bugs)
+
 Figwheel is a good way to start using Prospero in a web browser.  Consider
 setting up a figwheel project and starting with ClojureScript.
 
